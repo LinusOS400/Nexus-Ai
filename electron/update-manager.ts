@@ -1,9 +1,8 @@
 import { app, ipcMain, type BrowserWindow } from 'electron';
-import electronUpdater from 'electron-updater';
+import { autoUpdater } from 'electron-updater';
 import type { UpdateInfo } from 'electron-updater';
 import type { UpdateStatus } from '../shared/types';
 
-const { autoUpdater } = electronUpdater;
 let currentStatus: UpdateStatus = { state: 'idle', currentVersion: '0.0.0' };
 let getWindow: () => BrowserWindow | null = () => null;
 
