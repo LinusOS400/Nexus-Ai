@@ -1,0 +1,112 @@
+{
+  "name": "nexus-studio",
+  "version": "0.4.4",
+  "description": "A secure, streaming desktop AI workbench for local and hosted models.",
+  "author": "Nexus Studio",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LinusOS400/Nexus-Ai.git"
+  },
+  "main": "dist-electron/main.js",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n WEB,MAIN,APP -c cyan,magenta,green \"vite --host 0.0.0.0\" \"npm:dev:main\" \"wait-on tcp:5173 dist-electron/main.js && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+    "dev:main": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --format=cjs --target=node20 --outdir=dist-electron --external:electron --external:electron-updater --external:node:* --watch",
+    "web": "vite --host 0.0.0.0",
+    "build": "npm run build:main && tsc -p tsconfig.json && vite build",
+    "build:main": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --format=cjs --target=node20 --outdir=dist-electron --external:electron --external:electron-updater --external:node:*",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pack:win": "npm run build && cross-env ELECTRON_BUILDER_COMPRESSION_LEVEL=1 electron-builder --win nsis --x64",
+    "pack:win:portable": "npm run build && cross-env ELECTRON_BUILDER_COMPRESSION_LEVEL=1 electron-builder --win portable --x64",
+    "release:win": "npm run build && cross-env ELECTRON_BUILDER_COMPRESSION_LEVEL=1 electron-builder --win nsis --x64 --publish always",
+    "pack:dir": "npm run build && electron-builder --dir",
+    "test:ai": "node --test tests/ai.test.cjs",
+    "test:code-mode": "node --test tests/code-mode.test.cjs",
+    "test": "node --test \"tests/*.test.cjs\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^41.7.1",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "ai.nexus.studio",
+    "productName": "Nexus Studio",
+    "asar": true,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "LinusOS400",
+        "repo": "Nexus-Ai",
+        "releaseType": "release"
+      }
+    ],
+    "compression": "normal",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json",
+      "LICENSE"
+    ],
+    "artifactName": "Nexus-Studio-Setup-${version}-${arch}.${ext}",
+    "win": {
+      "icon": "assets/nexus-icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Nexus Studio"
+    },
+    "portable": {
+      "artifactName": "Nexus-Studio-Portable-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    }
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "acorn": "^8.19.0",
+    "electron-updater": "^6.8.9",
+    "highlight.js": "^11.12.0"
+  }
+}
