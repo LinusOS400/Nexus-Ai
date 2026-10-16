@@ -9,6 +9,11 @@ on:
 permissions:
   contents: write
 
+# Release builds are serialized so two runs can never publish the same version at once.
+concurrency:
+  group: publish-windows-release
+  cancel-in-progress: false
+
 jobs:
   release:
     name: Build and publish Windows installer
@@ -27,7 +32,44 @@ jobs:
         run: |
           npm run typecheck
           npm test
+
+      # electron-builder publishes the installer, its blockmap and latest.yml through
+      # parallel publisher instances. Each instance looks the release up by tag and
+      # creates one when it is missing, so a version with no release yet can end up
+      # split across two releases with the same tag — which breaks the updater's
+      # releases/latest lookup and its download URLs. Creating the draft release up
+      # front makes every publisher attach to the same release.
+      - name: Ensure one draft release for this version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; publishers will attach to it."
+            exit 0
+          fi
+          echo "Creating draft release $tag."
+          gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Nexus Studio $version" --generate-notes
+
       - name: Build and publish update assets
         run: npm run release:win
         env:
           GH_TOKEN: ${{ github.token }}
+          # Allow re-running a build for a version whose release was published over two hours ago.
+          EP_GH_IGNORE_TIME: true
+
+      # The release stays a draft until every updater asset has been uploaded, so a
+      # failed or partial build never goes live in the update feed.
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          tag="v$version"
+          gh release edit "$tag" --draft=false --latest
+          gh release view "$tag" --json assets --jq '.assets[] | "\(.name) (\(.size) bytes)"'
